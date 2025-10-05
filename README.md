@@ -16,10 +16,14 @@ Originally based on xpressos/OLSSCRIPTS-olsdomain (GPLv3). Modernized and extend
 - Graceful reload (`lswsctrl reload`) fallback to restart
 - Multi-distro detection (CentOS, AlmaLinux, Rocky, Ubuntu, Debian)
 
-## 🚀 Quick Start (Interactive Mode)
+## 🚀 Quick Start (Interactive Mode) + From CDN
 
 ```
 ./olsdomain.sh
+```
+or via CDN
+```
+bash <(curl -fsSL script.irfani.dev/olsdomain.sh)
 ```
 
 ### Menu Options
