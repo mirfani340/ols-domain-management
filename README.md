@@ -1,25 +1,131 @@
-# Olsdomain - One click OpenLiteSpeed Domain Install
+# OLS Domain Management Script
 
-Description
---------
+Enhanced OpenLiteSpeed (OLS) domain provisioning & SSL automation script with an interactive CLI dashboard, per‑domain logging, graceful reloads, and optional automatic SSL vHost enablement.
 
-Olsdomain is a one-click OpenLiteSpeed installation script for adding a domain/subdomain to your server, configuring OLS for the new domain and installing an SSL certificate for all domains on the server using Letsencrypt Certbot-Auto. 
+Originally based on xpressos/OLSSCRIPTS-olsdomain (GPLv3). Modernized and extended by `irfani.dev` (2025).
 
-The script automates the domain setup process in OpenLiteSpeed, saving you time by not having to: 
-<br>-Create the site folders manually on your server. 
-<br>-Setting up/configuring the domain through the OLS Admin panel.
+## ✨ Features
 
-This script was designed to work following the use of the OLSsite script (It may/may not work independently):
-<br>https://github.com/xpressos/OLSscripts-olssite
+- Interactive dashboard (no arguments needed)
+- Add / remove virtual hosts quickly
+- Automatic directory scaffolding (conf, logs, web root)
+- Per-domain access log: `/usr/local/lsws/logs/<domain>/access.log`
+- Custom combined log format (includes Referer & User-Agent)
+- Let's Encrypt SSL issuance via Certbot (webroot method)
+- Optional immediate SSL enable (adds `vhssl` block + 443 listener map)
+- Graceful reload (`lswsctrl reload`) fallback to restart
+- Multi-distro detection (CentOS, AlmaLinux, Rocky, Ubuntu, Debian)
 
+## 🚀 Quick Start (Interactive Mode)
 
-<br><b>Example Usage:</b>
+```
+./olsdomain.sh
+```
 
-./olsdomain.sh -e myemail@gmail.com -d domain.com -p /usr/local/lsws/www/domain.com/html
+### Menu Options
+1. Add new domain
+   - Prompts: domain, site root (default `/usr/local/lsws/www/<domain>`)
+   - Creates: `conf/vhosts/<domain>`, `logs/<domain>`, `www/<domain>`
+   - Generates minimal `index.html`
+   - Writes vHost + mapping to `httpd_config.conf`
+   - Gracefully reloads OLS
 
-<br><b>Important:</b>
-<br>You must specify an email, a domain and the server path for your site files. <br>All three flags (-e / -d / -p) are necessary for the script to run successfully.
+2. Remove domain
+   - Removes mapping + `virtualhost` block
+   - Deletes vHost config directory
+   - Optionally deletes logs + web root
+   - Restarts OLS
 
-<br><b>This script is designed to run with Letsencrypt CertBot-Auto - This binary should be Installed under: /usr/bin/</b>
+3. Install SSL On Domain
+   - Prompts: domain, email, optional webroot
+   - Runs: `certbot certonly --webroot -w <webroot> -d <domain> -m <email> --agree-tos -n -v`
+   - Prompts to enable SSL (adds `vhssl` block + ensures 443 listener `map`)
+   - Gracefully reloads OLS if enabled
 
-<b> Tested on Centos 7 only.</b>
+4. Exit
+
+## 🔧 Non-Interactive (Legacy Flags)
+
+```
+./olsdomain.sh -d example.com -e admin@example.com -p /usr/local/lsws/www/example.com
+```
+This will:
+1. Create site structure (if missing)
+2. Configure vHost & mapping
+3. Issue SSL (webroot)
+4. Attempt to enable SSL automatically
+5. Run a basic test fetch
+
+## 📁 Directory Layout
+
+```
+/usr/local/lsws/www/<domain>         # Web root (vhRoot/docRoot)
+/usr/local/lsws/logs/<domain>/access.log  # Per-domain access log
+/usr/local/lsws/conf/vhosts/<domain>/vhconf.conf  # vHost config
+```
+
+## 📝 Access Log Format
+
+Configured inside each new vHost:
+```
+%h %l %u %t "%r" %>s %b "%{Referer}i" "%{User-Agent}i"
+```
+
+## 🔒 SSL Enable Mechanics
+
+After certificate issuance you can enable SSL immediately (interactive) or it will auto-attempt in non-interactive mode. This inserts:
+- A `vhssl { ... }` block into: `/usr/local/lsws/conf/vhosts/<domain>/vhconf.conf`
+- A 443 listener (if missing) or adds a `map <domain> <domain>` line to an existing one.
+
+Certificates are expected at:
+```
+/etc/letsencrypt/live/<domain>/fullchain.pem
+/etc/letsencrypt/live/<domain>/privkey.pem
+```
+
+If you need to re-run SSL enable manually:
+```
+fn_enable_ssl_vhost <domain>
+```
+(Run from within the script context / sourced environment.)
+
+## 🛠 Manual Certbot Example
+
+```
+certbot certonly --webroot -w /usr/local/lsws/www/example.com -d example.com -m you@example.com --agree-tos -n -v
+```
+
+Then enable SSL (if not already):
+```
+./olsdomain.sh   # choose Install SSL On Domain, or run enable function
+```
+
+## 🧪 Health Test
+
+After deployment the script performs a simple HTTP fetch for the keyword "Congratulation". Adjust `fn_test_site` as needed for your content.
+
+## 🐛 Troubleshooting
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| certbot not found | Package missing | Let script auto-install or `apt/yum install certbot` |
+| SSL enable says cert files missing | Cert issuance failed | Re-run Install SSL and check DNS / firewall |
+| Reload fails | Older OLS version | Falls back to restart automatically |
+| 443 not serving domain | Missing map line | Re-run SSL enable or manually add map in listener |
+
+## 🧾 License
+GPL v3 or later. See `LICENSE`.
+
+## ✅ Supported / Detected Distros
+CentOS (6–9), AlmaLinux (8/9), Rocky (8/9), Ubuntu (14/16/18), Debian (7–9). Newer versions likely compatible but not fully tested.
+
+## Tested
+Centos 7 🐧
+
+Almalinux 9 🐧
+
+## 🙌 Credits
+Original: Xpressos CDC
+Modern enhancements: irfani.dev (2025)
+
+Contributions / PRs welcome.
